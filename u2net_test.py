@@ -20,6 +20,7 @@ from data_loader import SalObjDataset
 
 from model import U2NET # full size version 173.6 MB
 from model import U2NETP # small version u2net 4.7 MB
+import argparse
 
 # normalize the predicted SOD probability map
 def normPRED(d):
@@ -51,19 +52,16 @@ def save_output(image_name,pred,d_dir):
 
     imo.save(d_dir+imidx+'.png')
 
-def main():
+def main(args):
 
     # --------- 1. get image path and name ---------
-    model_name='u2net'#u2netp
-
-
-
-    image_dir = os.path.join(os.getcwd(), 'test_data', 'test_images')
-    prediction_dir = os.path.join(os.getcwd(), 'test_data', model_name + '_results' + os.sep)
+    model_name = args.model
+    image_dir = args.input_dir
+    prediction_dir = args.result_dir
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
 
     img_name_list = glob.glob(image_dir + os.sep + '*')
-    print(img_name_list)
+    print("Found images:", len(img_name_list))
 
     # --------- 2. dataloader ---------
     #1. dataloader
@@ -116,4 +114,10 @@ def main():
         del d1,d2,d3,d4,d5,d6,d7
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--input-dir', help='Folder with input images', required=True)
+    parser.add_argument('--result-dir', help='Output folder', required=True)
+    parser.add_argument('--model', help='Model name "u2net" or "u2netp" (default: %(default)s)', default='u2net')
+    args = parser.parse_args()
+    del parser
+    main(args)
