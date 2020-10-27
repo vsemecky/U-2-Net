@@ -1,9 +1,11 @@
+# @todo Modely ulozit do gitu jako "long"
+# @todo Poustet paralelne v threadech (jen v CPU modu)
+
 import os
 import glob
 from pprint import pprint
 import argparse
 from shutil import copyfile
-
 import progressbar
 
 from skimage import io, transform
@@ -17,7 +19,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms  # , utils
 # import torch.optim as optim
 import numpy as np
-from PIL import Image, ImageColor
+from PIL import Image, ImageColor, ImageFile
 import cv2
 
 from data_loader import RescaleT
@@ -28,6 +30,8 @@ from data_loader import SalObjDataset
 from model import U2NET  # full size version 173.6 MB
 from model import U2NETP  # small version u2net 4.7 MB
 
+# To fix error `OSError: image file is truncated (1 bytes not processed)`
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # normalize the predicted SOD probability map
 def normPRED(d):
@@ -42,14 +46,14 @@ def pil2opencv(pil_image):
     return np.array(pil_image)[:, :, ::-1].copy()
 
 
-# Get average color at (top-left, top-right, bottom-left, bottom-right)
+# Get average color at (top-left, top-middle, top-right, bottom-left, bottom-right)
 def has_correct_background(img, expected_color="#ffffff"):
-    expected_color = ImageColor.getrgb(expected_color)
-
+    expected_color = ImageColor.getrgb(expected_color)  # Convert color-string to ImageColor
     pixdata = img.load()
     (w, h) = img.size
     pixels = [
         pixdata[0, 0],          # North-west
+        pixdata[int(w/2), 0],   # North-middle
         pixdata[w - 1, 0],      # North-east
         pixdata[0, h - 1],      # South-west
         pixdata[w - 1, h - 1],  # South-east
@@ -57,7 +61,6 @@ def has_correct_background(img, expected_color="#ffffff"):
 
     # Compare pixels with `expected_color`
     for pixel in pixels:
-        # print("pixel", pixel, "expected_color", expected_color)
         if pixel != expected_color:
             return False
 
@@ -108,7 +111,7 @@ def main(config):
     model_name = config.model
     image_dir = config.input_dir
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name + '.pth')
-    img_name_list = glob.glob(image_dir + os.sep + '*')
+    img_name_list = glob.glob(image_dir + os.sep + '*')  # @todo *.jpg
     print("Found images:", len(img_name_list))
     print("Model path:", model_dir)
 
@@ -135,7 +138,10 @@ def main(config):
         net = U2NETP(3, 1)
 
     # CUDA mode: 1 = CUDA, 0 = CPU
-    cuda_mode = 1 if torch.cuda.is_available() else 0
+    if config.cpu:
+        cuda_mode = 0
+    else:
+        cuda_mode = 1 if torch.cuda.is_available() else 0
 
     # Load network
     if cuda_mode:
@@ -150,22 +156,22 @@ def main(config):
     print()
 
     # Create result folder, if not exists
-    if not os.path.exists(config.result_dir):
-        os.makedirs(config.result_dir, exist_ok=True)
+    os.makedirs(config.result_dir, exist_ok=True)
 
     # --------- 4. inference for each image ---------
     results = enumerate(test_salobj_dataloader)
-    for i_test, data_test in progressbar.progressbar(results, redirect_stdout=True, max_value=len(test_salobj_dataloader)):
+    for i_test, data_test in progressbar.progressbar(results, redirect_stdout=True, min_value=1, max_value=len(test_salobj_dataloader)):
         try:
             image_file = img_name_list[i_test]
             basename = os.path.basename(image_file)
 
             # Skip if image has already target background
-            original_pil = Image.open(image_file).convert('RGB')
-            if has_correct_background(original_pil, config.background):
-                print(basename, colored("SKIPPING (background OK)", "yellow"))
-                copyfile(image_file, config.result_dir + os.sep + os.path.basename(image_file))
-                continue
+            if config.autoskip:
+                original_pil = Image.open(image_file).convert('RGB')
+                if has_correct_background(original_pil, config.background):
+                    print(basename, colored("SKIPPING", "yellow"), "(background OK)")
+                    copyfile(image_file, config.result_dir + os.sep + os.path.basename(image_file))
+                    continue
 
             inputs_test = data_test['image']
             inputs_test = inputs_test.type(torch.FloatTensor)
@@ -186,7 +192,7 @@ def main(config):
 
             del d1, d2, d3, d4, d5, d6, d7
 
-            print(colored(basename, "yellow"), colored("OK", "green"))
+            print(basename, colored("OK", "green"))
         except Exception as e:
             print(colored(img_name_list[i_test], "yellow"), colored("ERROR", "red"), e)
 
@@ -197,6 +203,9 @@ if __name__ == "__main__":
     parser.add_argument('--result-dir', help='Output folder', required=True)
     parser.add_argument('--model', help='Model name "u2net" or "u2netp" (default: %(default)s)', default='u2net')
     parser.add_argument('--background', help='Background color (default: %(default)s)', default='#ffffff')
+    parser.add_argument('--cpu', help='Force CPU mode - don\'t detect CUDA (default: %(default)s)', default=False)
+    parser.add_argument('--autoskip', default=False,
+                        help='Skip image if background color is already correct (default: %(default)s)')
     parser.add_argument('--save-mask', type=bool, default=False,
                         help='Model name "u2net" or "u2netp" (default: %(default)s)')
     parser.add_argument('--save-masked', type=bool, default=False,
