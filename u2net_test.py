@@ -33,8 +33,9 @@ from model import U2NETP  # small version u2net 4.7 MB
 # To fix error `OSError: image file is truncated (1 bytes not processed)`
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 # normalize the predicted SOD probability map
-def normPRED(d):
+def norm_pred(d):
     ma = torch.max(d)
     mi = torch.min(d)
     dn = (d - mi) / (ma - mi)
@@ -185,7 +186,7 @@ def main(config):
 
             # normalization
             predict = d1[:, 0, :, :]
-            predict = normPRED(predict)
+            predict = norm_pred(predict)
 
             # save results
             save_output(image_file, predict, config=config)
