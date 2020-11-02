@@ -97,6 +97,10 @@ class U2Effects:
         object_pil = Image.composite(image_pil, background_pil, mask_pil.convert("L"))
         return self.postprocess(object_pil)
 
+    def get_object_white(self, image):
+        """ Helper to simplify usage as a filter for MoviePy """
+        return self.get_object(image, "#ffffff")
+
     def blur_background(self, image, blur_radius=5):
         """ Returns image with blured background using Gausian Blur """
         mask_pil = self.get_mask(image)
