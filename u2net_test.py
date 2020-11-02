@@ -94,8 +94,8 @@ def save_output(image_name, predict, config):
         original_pil.save(output_path)
 
     # Save masked image
-    if config.save_masked:
-        masked_pil.save(output_path + ".masked.jpg")
+    if config.save_object:
+        masked_pil.save(output_path + ".object.jpg")
 
     # Save comparison image
     if config.save_compare:
@@ -209,7 +209,7 @@ if __name__ == "__main__":
                         help='Skip image if background color is already correct (default: %(default)s)')
     parser.add_argument('--save-mask', type=bool, default=False,
                         help='Model name "u2net" or "u2netp" (default: %(default)s)')
-    parser.add_argument('--save-masked', type=bool, default=False,
+    parser.add_argument('--save-object', type=bool, default=False,
                         help='Save image without background (default: %(default)s)')
     parser.add_argument('--save-original', type=bool, default=False,
                         help='Copy original image to results (default: %(default)s)')
