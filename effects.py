@@ -97,11 +97,11 @@ class U2Effects:
         object_pil = Image.composite(image_pil, background_pil, mask_pil.convert("L"))
         return self.postprocess(object_pil)
 
-    def blur_background(self, image_pil, blur_radius=5):
+    def blur_background(self, image, blur_radius=5):
         """ Returns image with blured background using Gausian Blur """
-        mask_pil = self.get_mask(image_pil)
-        background_pil = image_pil.copy().filter(ImageFilter.GaussianBlur(blur_radius))
-        object_pil = Image.composite(image_pil, background_pil, mask_pil.convert("L"))
+        mask_pil = self.get_mask(image)
+        background_pil = image.copy().filter(ImageFilter.GaussianBlur(blur_radius))
+        object_pil = Image.composite(image, background_pil, mask_pil.convert("L"))
         return self.postprocess(object_pil)
 
     def get_background(self, image_pil, color="#000000"):
