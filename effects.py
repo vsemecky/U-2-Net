@@ -43,17 +43,20 @@ class U2Effects:
         elif model_name == 'u2netp':
             print("Model: U2NetP (4.7 MB)")
             self.net = U2NETP(3, 1)  # 4.7 MB
+        else:
+            raise AssertionError('Invalid "model_name"', 'Use "u2net" or "u2netp"')
 
         # Load network
-        model_dir = os.path.join(os.getcwd(), 'saved_models', model_name + '.pth')
+        model_file = os.path.join(os.path.dirname(__file__), 'saved_models', model_name + '.pth')
+        print("model_file:", model_file)
 
         if cuda_mode:
             print("CUDA mode")
-            self.net.load_state_dict(torch.load(model_dir))
+            self.net.load_state_dict(torch.load(model_file))
             self.net.cuda()
         else:
             print("CPU mode")
-            self.net.load_state_dict(torch.load(model_dir, map_location=torch.device('cpu')))
+            self.net.load_state_dict(torch.load(model_file, map_location=torch.device('cpu')))
 
         self.net.eval()
 
